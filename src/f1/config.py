@@ -73,6 +73,22 @@ FOLDS = [
     ((2014, 2018), 2019),
 ]
 
+# Written into the `fold` column for rows that no walk-forward fold validates on
+# (every training season before the first fold, plus validation and test).
+FOLD_SENTINEL = -1
+
+
+def fold_of(year: int) -> int:
+    """Index of the walk-forward fold that validates on this season.
+
+    Returns FOLD_SENTINEL if no fold validates on it. Single source of truth so
+    the real table and the stub cannot disagree.
+    """
+    for i, (_, validate_on) in enumerate(FOLDS):
+        if year == validate_on:
+            return i
+    return FOLD_SENTINEL
+
 # --------------------------------------------------------------------------
 # Data quirks
 # --------------------------------------------------------------------------

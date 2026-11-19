@@ -29,21 +29,13 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .config import FOLDS, PROCESSED, YEAR_MAX, YEAR_MIN, split_of
+from .config import PROCESSED, YEAR_MAX, YEAR_MIN, fold_of, split_of
 from .schema import ALL_COLUMNS, FEATURES, ID_COLUMNS, TARGET, assert_valid
 
 RACES_PER_SEASON = 20
 DRIVERS_PER_RACE = 20
 PODIUM_SLOTS = 3
 SEED = 20261118
-
-
-def _fold_of(year: int) -> int:
-    """Which walk-forward fold validates on this season (-1 if none)."""
-    for i, (_, validate_on) in enumerate(FOLDS):
-        if year == validate_on:
-            return i
-    return -1
 
 
 def make_stub(seed: int = SEED) -> pd.DataFrame:
@@ -68,7 +60,7 @@ def make_stub(seed: int = SEED) -> pd.DataFrame:
                     "year": year,
                     "round": rnd,
                     "split": split_of(year),
-                    "fold": _fold_of(year),
+                    "fold": fold_of(year),
 
                     "driverId": int(driver_idx) + 1,
                     "constructorId": int(driver_idx) // 2 + 1,   # 2 drivers per team

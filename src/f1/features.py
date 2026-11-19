@@ -41,6 +41,69 @@ def past_mean(
     )
 
 
+def past_roll_sum(
+    df: pd.DataFrame,
+    group: str | list[str],
+    col: str,
+    window: int,
+) -> pd.Series:
+    """Rolling SUM of `col` over the PREVIOUS `window` races within `group`.
+
+    Same shift(1) discipline as past_mean. Used where a total rather than an
+    average is wanted, e.g. points scored in the last 5 races.
+    """
+    if df.empty:
+        return pd.Series(dtype="float64", index=df.index)
+
+    return df.groupby(group)[col].transform(
+        lambda s: s.shift(1).rolling(window, min_periods=1).sum()
+    )
+
+
+def past_expanding_mean(
+    df: pd.DataFrame,
+    group: str | list[str],
+    col: str,
+) -> pd.Series:
+    """Mean of `col` over ALL PREVIOUS rows within `group` (no fixed window).
+
+    Used for "how has this driver historically gone at this circuit", where the
+    whole available history is wanted rather than a recent window - there are
+    only ever a handful of prior visits.
+    """
+    if df.empty:
+        return pd.Series(dtype="float64", index=df.index)
+
+    return df.groupby(group)[col].transform(
+        lambda s: s.shift(1).expanding().mean()
+    )
+
+
+def past_count(df: pd.DataFrame, group: str | list[str]) -> pd.Series:
+    """Number of PREVIOUS rows within `group`. Zero on first appearance.
+
+    cumcount() is already exclusive of the current row, so no shift is needed.
+    """
+    if df.empty:
+        return pd.Series(dtype="int64", index=df.index)
+    return df.groupby(group).cumcount()
+
+
+def past_cumsum(
+    df: pd.DataFrame,
+    group: str | list[str],
+    col: str,
+) -> pd.Series:
+    """Cumulative sum of `col` over ALL PREVIOUS rows within `group`."""
+    if df.empty:
+        return pd.Series(dtype="float64", index=df.index)
+    return (
+        df.groupby(group)[col]
+        .transform(lambda s: s.shift(1).cumsum())
+        .fillna(0.0)
+    )
+
+
 def past_sum(
     df: pd.DataFrame,
     group: str | list[str],
