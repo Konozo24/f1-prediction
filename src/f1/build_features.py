@@ -34,6 +34,7 @@ import pandas as pd
 from .config import (
     FINISHED_PATTERN,
     GREEN_LAP_MULTIPLE,
+    HISTORY_YEAR_MIN,
     MAX_PIT_STOP_SECONDS,
     NA_VALUES,
     FOLD_SENTINEL,
@@ -83,7 +84,7 @@ def build_spine(d: dict[str, pd.DataFrame]) -> pd.DataFrame:
         d["results"][["raceId", "driverId", "constructorId", "grid",
                       "positionOrder", "points", "statusId"]]
         .merge(races, on="raceId", how="inner")
-        .query("@YEAR_MIN <= year <= @YEAR_MAX")
+        .query("@HISTORY_YEAR_MIN <= year <= @YEAR_MAX")
     )
 
     # Races with no grid data at all cannot be predicted. Drop them whole and
@@ -301,6 +302,15 @@ def add_lap_and_pit(df: pd.DataFrame, lap_times: pd.DataFrame,
     return df.drop(columns=["_laptime_rank", "_consistency", "_lap1_pos", "_gained_lap1"])
 
 
+def drop_history_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Remove the lookback-only seasons once every rolling window is built."""
+    before = len(df)
+    df = df[df["year"] >= YEAR_MIN].reset_index(drop=True)
+    print(f"  dropped {before - len(df):,} lookback rows "
+          f"({HISTORY_YEAR_MIN}-{YEAR_MIN - 1}), kept {len(df):,}")
+    return df
+
+
 def add_splits(df: pd.DataFrame) -> pd.DataFrame:
     df["split"] = df["year"].map(split_of)
     df["fold"] = df["year"].map(fold_of).fillna(FOLD_SENTINEL).astype(int)
@@ -346,6 +356,7 @@ def main() -> None:
     df = add_circuit(df)
     df = add_season_context(df)
     df = add_lap_and_pit(df, d["lap_times"], d["pit_stops"])
+    df = drop_history_rows(df)          # must come AFTER every rolling feature
     df = add_splits(df)
 
     out = df[ALL_COLUMNS].copy()

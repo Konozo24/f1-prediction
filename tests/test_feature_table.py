@@ -63,10 +63,29 @@ def test_no_feature_too_correlated_with_target(df):
     assert c.max() < 0.95, c.sort_values(ascending=False).head()
 
 
-def test_first_race_in_scope_has_no_rolling_form(df):
-    """shift(1) must leave the first scoped appearance empty, not filled."""
-    first = df.sort_values(["year", "round"]).groupby("driverId").head(1)
-    assert first.driver_avg_finish_3.isna().all()
+def test_continuing_drivers_have_form_at_the_2014_opener(df):
+    """2012-13 are loaded as lookback, so returning drivers start with history.
+
+    Before this, every driver had NaN form at the 2014 opener and 11.3% of all
+    rows had a "last 10" window built from fewer than 10 races.
+    """
+    opener = df[(df.year == 2014) & (df["round"] == 1)]
+    assert opener.driver_avg_finish_10.notna().mean() > 0.8, (
+        "most of the 2014 grid raced in 2013 and should have form"
+    )
+    ham = opener[opener.driverId == 1]
+    assert ham.driver_avg_finish_10.notna().all(), "Hamilton raced all of 2013"
+
+
+def test_rolling_form_is_nan_only_for_drivers_with_no_lookback(df):
+    """NaN form must be rare and confined to genuine newcomers."""
+    assert df.driver_avg_finish_10.isna().mean() < 0.02
+
+
+def test_lookback_seasons_are_not_in_the_table(df):
+    """2012-13 fill the windows, then must be dropped - never predicted."""
+    from src.f1.config import YEAR_MIN
+    assert df.year.min() == YEAR_MIN
 
 
 def test_career_totals_come_from_full_history_not_the_window(df):

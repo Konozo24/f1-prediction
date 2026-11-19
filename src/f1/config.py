@@ -40,8 +40,16 @@ TABLES = [
 # --------------------------------------------------------------------------
 # Scope
 # --------------------------------------------------------------------------
-YEAR_MIN = 2014  # hybrid-engine era begins
+YEAR_MIN = 2014  # hybrid-engine era begins - first season KEPT in the table
 YEAR_MAX = 2025  # 2026 excluded: new regulations
+
+# Seasons loaded ONLY to fill rolling-window lookback. These rows are dropped
+# before the table is written, so they never become training examples and no
+# pre-hybrid race is ever predicted. Without them, "driver_avg_finish_10" at
+# the 2014 opener averages zero races, and 11.3% of all rows had a "last 10"
+# window computed over fewer than 10 races - a silent quality problem, because
+# the column name promises 10 either way.
+HISTORY_YEAR_MIN = 2012
 
 # --------------------------------------------------------------------------
 # Target
