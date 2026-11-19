@@ -22,26 +22,27 @@ Dataset: [jtrotman/formula-1-race-data](https://www.kaggle.com/datasets/jtrotman
 
 > Provenance note: data **to 2024 comes from Ergast** (retired 2024);
 > **2025 onward comes from Jolpica**, the community successor. Our test set is
-> 2022–2025, so it straddles that boundary — `verify.py` Q3 checks whether 2025
-> is as complete as earlier seasons.
+> 2022–2025, so it straddles that boundary. `verify.py` Q3 checked this:
+> **2025 is complete** and in line with earlier seasons.
 
-**Option A — Kaggle CLI** (needs an API token: kaggle.com → Settings → Create
-New API Token, then save `kaggle.json` to `~/.kaggle/`):
+Download the zip from the dataset page and extract the 14 CSVs **flat** into
+`data/raw/` — so `data/raw/results.csv`, not
+`data/raw/formula-1-race-data/results.csv`.
 
-```bash
-pip install kaggle
-kaggle datasets download -d jtrotman/formula-1-race-data -p data/raw --unzip
-```
+No Kaggle API token needed. We download once and freeze, so there is nothing to
+script.
 
-**Option B — manual**: download the zip from the dataset page and extract the
-CSVs directly into `data/raw/` (flat, no subfolder).
-
-Then freeze it. **Nobody re-downloads mid-project** — different data means
-incomparable results:
+Then record the date. **Nobody re-downloads mid-project** — the dataset is
+refreshed after every Grand Prix, and different data means incomparable results
+between members:
 
 ```bash
 date -u > data/raw/DOWNLOADED_AT.txt
 ```
+
+The code reads 8 of the 14 tables (see `config.TABLES`). The rest are left in
+place but unused — `qualifying.csv` in particular, in case the team revisits
+the decision to exclude it.
 
 ## Step 1 — verify the dataset supports the plan
 
@@ -61,8 +62,8 @@ pytest -q
 | Q5 | dtypes — did `\N` parse? | If these are `object`, nothing downstream works |
 | Q6 | Which `status` values occur | Makes the DNF rule exact instead of guessed |
 
-Paste Q1–Q3 into the team chat. Q3 may change the split design, and that
-decision is far cheaper now than after M2–M4 have trained.
+Already run — results below under *Verified dataset facts*, full output in
+`data/raw/VERIFY.txt`. Re-run it after any change to `config.py` scope or splits.
 
 ---
 
@@ -71,12 +72,16 @@ decision is far cheaper now than after M2–M4 have trained.
 ```
 src/f1/
   config.py      every shared decision: paths, splits, folds, banned columns
-  features.py    past_mean / past_sum / recode_grid  <- the leakage discipline
-  verify.py      step 1
+  schema.py      the frozen 30-feature contract  <- M2/M3/M4 import this
+  features.py    past_mean / past_sum / recode_grid  <- leakage discipline
+  verify.py      step 1: prove the data supports the plan
+  stub.py        synthetic table so M2-M4 can start before the real one lands
 tests/
-  test_leakage.py
-data/raw/        gitignored, frozen after download
-data/processed/   features.parquet (the artifact M2-M4 depend on)
+  test_leakage.py   shift(1), grid encoding, split ordering
+  test_schema.py    the 30-feature contract
+data/raw/           gitignored, frozen after download
+data/processed/      features.parquet (the artifact M2-M4 depend on)
+                     features_stub.parquet (plumbing only, no conclusions)
 ```
 
 ## The three rules that matter
@@ -98,12 +103,33 @@ data/processed/   features.parquet (the artifact M2-M4 depend on)
 - **Model wrapper**: `fit(X, y)` and `predict_proba(X)`
 - **Out-of-fold file**: `raceId, driverId, fold, model_name, proba`
 
+## Verified dataset facts (step 1, see `data/raw/VERIFY.txt`)
+
+| | |
+|---|---|
+| Scope 2014–2025 | 5,105 rows · 252 races · 756 podiums |
+| Train 2014–19 | 2,487 rows · **363 podiums** |
+| Validation 2020–21 | 780 rows · 117 podiums |
+| Test 2022–25 | 1,838 rows · 276 podiums |
+| **EPV at 33 features** | **11.0** — at the accepted floor of 10 |
+| Pit-lane starts (`grid == 0`) | 79 |
+| DNF rate | 16.9% |
+| 2025 `lap_times` / `pit_stops` | Complete — in line with earlier seasons |
+
+Two data quirks confirmed and handled:
+
+- Real grids reach **22** (2014–16 ran 22-car fields), so `PIT_LANE_GRID = 23`.
+- The **2025 Qatar GP (round 23)** has no grid data at all. `recode_grid` refuses
+  to impute grid; `drop_races_missing_grid` removes such races whole and returns
+  their ids for the methodology.
+
 ## Status
 
 - [x] Repo scaffold, venv, pinned dependencies
-- [x] `config.py` — splits, folds, banned columns, DNF rule, pit-lane constant
-- [x] `features.py` — `past_mean`, `past_sum`, `recode_grid`
-- [x] `tests/test_leakage.py` — 17 passing
-- [ ] **Download the dataset** ← only remaining blocker on step 1
-- [ ] Run `verify.py`, post Q1–Q3 to the team
-- [ ] Step 2: spine + target + the 30 features → frozen parquet
+- [x] `config.py` — splits, folds, banned columns, DNF rule, grid constants
+- [x] `features.py` — `past_mean`, `past_sum`, `recode_grid`, `drop_races_missing_grid`
+- [x] `schema.py` — frozen 30-feature contract
+- [x] `stub.py` — day-3 hand-off table for M2/M3/M4
+- [x] Dataset downloaded and frozen
+- [x] **Step 1: `verify.py` run, 35 tests passing**
+- [ ] Step 2: spine + target + the 30 features → `features.parquet`
