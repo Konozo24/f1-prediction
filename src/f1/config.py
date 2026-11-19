@@ -82,7 +82,16 @@ FOLDS = [
 #
 # Hardcoded constant on purpose: df["grid"].max() + 1 would be a statistic
 # computed over the full dataset, including test.
-PIT_LANE_GRID = 21
+#
+# Verified against the data (verify.py Q4): the largest real grid slot in
+# 2014-2025 is 22 (2014-2016 ran 22-car fields). 23 therefore places a
+# pit-lane start behind every legitimate slot. An earlier value of 21 was a
+# bug - it ranked pit-lane starts ahead of 70 real grid-21 and grid-22 rows.
+MAX_OBSERVED_GRID = 22
+PIT_LANE_GRID = 23
+
+# 79 rows in scope start from the pit lane (verify.py Q4).
+N_PIT_LANE_EXPECTED = 79
 
 # A driver is classified as having finished if their status is "Finished" or
 # "+N Lap(s)". Everything else - Accident, Engine, Collision, Disqualified - is

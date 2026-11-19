@@ -153,3 +153,44 @@ def test_feature_table_has_no_banned_columns():
     # the label is allowed to exist in the file; it just must not be a FEATURE
     leaked = (cols & BANNED_COLUMNS) - {"podium"}
     assert not leaked, f"banned columns present: {sorted(leaked)}"
+
+
+# ---------------------------------------------------------------------------
+# Grid integrity - regression tests for two bugs found during verification
+# ---------------------------------------------------------------------------
+
+def test_pit_lane_grid_is_behind_every_real_slot():
+    """Regression: PIT_LANE_GRID was 21, but real grids reach 22.
+
+    2014-2016 ran 22-car fields, so 21 ranked pit-lane starts AHEAD of 70
+    legitimate grid-21 and grid-22 rows.
+    """
+    from src.f1.config import MAX_OBSERVED_GRID, PIT_LANE_GRID
+    assert PIT_LANE_GRID > MAX_OBSERVED_GRID
+
+
+def test_recode_grid_refuses_to_impute_missing_grid():
+    """Grid is the strongest feature; silently filling it is not acceptable."""
+    with pytest.raises(ValueError, match="missing grid"):
+        recode_grid(pd.Series([1.0, float("nan"), 5.0]))
+
+
+def test_drop_races_missing_grid_removes_whole_races():
+    """A race missing its grid cannot be predicted - drop all of it."""
+    from src.f1.features import drop_races_missing_grid
+    df = pd.DataFrame({
+        "raceId": [1, 1, 2, 2, 3, 3],
+        "grid":   [1.0, 2.0, 1.0, float("nan"), 3.0, 4.0],
+    })
+    clean, dropped = drop_races_missing_grid(df)
+    assert dropped == [2], "race 2 has a missing grid"
+    assert clean.raceId.tolist() == [1, 1, 3, 3], "partial fields must not survive"
+    assert not clean.grid.isna().any()
+
+
+def test_drop_races_missing_grid_is_a_noop_when_clean():
+    from src.f1.features import drop_races_missing_grid
+    df = pd.DataFrame({"raceId": [1, 1], "grid": [1.0, 2.0]})
+    clean, dropped = drop_races_missing_grid(df)
+    assert dropped == []
+    assert len(clean) == 2

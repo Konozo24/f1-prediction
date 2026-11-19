@@ -70,6 +70,39 @@ def recode_grid(grid: pd.Series) -> tuple[pd.Series, pd.Series]:
 
     Returns (recoded_grid, pit_lane_start_flag) so the information is kept
     rather than thrown away.
+
+    Raises if any grid is NaN. Grid is the strongest feature in the project, so
+    silently imputing it is not acceptable - call drop_races_missing_grid first
+    and record which races were removed.
     """
+    if grid.isna().any():
+        n = int(grid.isna().sum())
+        raise ValueError(
+            f"{n} rows have a missing grid. Grid cannot be imputed - it is the "
+            f"strongest predictor. Call drop_races_missing_grid() first."
+        )
+
     pit_lane = (grid == 0).astype("int8")
     return grid.replace(0, PIT_LANE_GRID), pit_lane
+
+
+def drop_races_missing_grid(df: pd.DataFrame) -> tuple[pd.DataFrame, list[int]]:
+    """Remove entire races whose starting grid is missing.
+
+    Found in verification: the 2025 Qatar Grand Prix (round 23) has no grid data
+    at all for any of its 20 drivers - a gap in the Jolpica-sourced 2025 data,
+    not scattered non-starters. 2014-2024 come from Ergast and are complete.
+
+    Dropped whole-race rather than row-wise, because a race missing its grid
+    cannot be predicted at all, and keeping a partial field would also corrupt
+    any per-race normalisation or top-3 hit-rate metric.
+
+    Returns (clean_df, dropped_race_ids) so the count can be reported in the
+    methodology rather than disappearing silently.
+    """
+    bad = df.loc[df["grid"].isna(), "raceId"].unique().tolist()
+    if not bad:
+        return df, []
+
+    clean = df[~df["raceId"].isin(bad)].copy()
+    return clean, sorted(int(r) for r in bad)
