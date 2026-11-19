@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+data/raw/*
+!data/raw/DOWNLOADED_AT.txt
+!data/raw/VERIFY.txt
+data/processed/*
+!data/processed/.gitkeep
+.ipynb_checkpoints/
