@@ -21,7 +21,7 @@ well on it, because grid is generated almost deterministically from the label.
 That is fine - the point is to exercise the plumbing, not to learn anything.
 
 Usage:
-    python -m src.f1.stub
+    python -m src.stub
 """
 
 from __future__ import annotations

@@ -47,7 +47,7 @@ the decision to exclude it.
 ## Step 1 — verify the dataset supports the plan
 
 ```bash
-python -m src.f1.verify | tee data/raw/VERIFY.txt
+python -m src.verify | tee data/raw/VERIFY.txt
 pytest -q
 ```
 
@@ -70,7 +70,7 @@ Already run — results below under *Verified dataset facts*, full output in
 ## Layout
 
 ```
-src/f1/
+src/
   config.py      every shared decision: paths, splits, folds, banned columns
   schema.py      the frozen 30-feature contract  <- M2/M3/M4 import this
   features.py    past_mean / past_sum / recode_grid  <- leakage discipline

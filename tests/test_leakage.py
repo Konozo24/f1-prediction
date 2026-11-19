@@ -12,8 +12,8 @@ Run:  pytest -q
 import pandas as pd
 import pytest
 
-from src.f1.config import BANNED_COLUMNS, FOLDS, split_of
-from src.f1.features import past_mean, past_sum, recode_grid
+from src.config import BANNED_COLUMNS, FOLDS, split_of
+from src.features import past_mean, past_sum, recode_grid
 
 
 # ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ def test_banned_set_covers_the_obvious_outcomes():
 
 def test_feature_table_has_no_banned_columns():
     """Runs once the real feature table exists; skips until then."""
-    from src.f1.config import PROCESSED
+    from src.config import PROCESSED
     path = PROCESSED / "features.parquet"
     if not path.exists():
         pytest.skip("feature table not built yet")
@@ -165,7 +165,7 @@ def test_pit_lane_grid_is_behind_every_real_slot():
     2014-2016 ran 22-car fields, so 21 ranked pit-lane starts AHEAD of 70
     legitimate grid-21 and grid-22 rows.
     """
-    from src.f1.config import MAX_OBSERVED_GRID, PIT_LANE_GRID
+    from src.config import MAX_OBSERVED_GRID, PIT_LANE_GRID
     assert PIT_LANE_GRID > MAX_OBSERVED_GRID
 
 
@@ -177,7 +177,7 @@ def test_recode_grid_refuses_to_impute_missing_grid():
 
 def test_drop_races_missing_grid_removes_whole_races():
     """A race missing its grid cannot be predicted - drop all of it."""
-    from src.f1.features import drop_races_missing_grid
+    from src.features import drop_races_missing_grid
     df = pd.DataFrame({
         "raceId": [1, 1, 2, 2, 3, 3],
         "grid":   [1.0, 2.0, 1.0, float("nan"), 3.0, 4.0],
@@ -189,7 +189,7 @@ def test_drop_races_missing_grid_removes_whole_races():
 
 
 def test_drop_races_missing_grid_is_a_noop_when_clean():
-    from src.f1.features import drop_races_missing_grid
+    from src.features import drop_races_missing_grid
     df = pd.DataFrame({"raceId": [1, 1], "grid": [1.0, 2.0]})
     clean, dropped = drop_races_missing_grid(df)
     assert dropped == []

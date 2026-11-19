@@ -16,8 +16,8 @@ Six questions:
     Q6  Which status values actually occur, so the DNF rule can be exact?
 
 Usage:
-    python -m src.f1.verify
-    python -m src.f1.verify | tee data/raw/VERIFY.txt
+    python -m src.verify
+    python -m src.verify | tee data/raw/VERIFY.txt
 """
 
 from __future__ import annotations

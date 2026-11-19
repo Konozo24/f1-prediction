@@ -3,10 +3,10 @@
 import pandas as pd
 import pytest
 
-from src.f1.config import BANNED_COLUMNS, PROCESSED
-from src.f1.schema import (ALL_COLUMNS, FEATURE_GROUPS, FEATURES, ID_COLUMNS,
+from src.config import BANNED_COLUMNS, PROCESSED
+from src.schema import (ALL_COLUMNS, FEATURE_GROUPS, FEATURES, ID_COLUMNS,
                            TARGET, assert_valid)
-from src.f1.stub import make_stub
+from src.stub import make_stub
 
 
 def test_exactly_thirty_features():
@@ -79,7 +79,7 @@ def test_assert_valid_rejects_a_banned_column():
 def test_stub_parquet_roundtrips():
     path = PROCESSED / "features_stub.parquet"
     if not path.exists():
-        pytest.skip("run: python -m src.f1.stub")
+        pytest.skip("run: python -m src.stub")
     df = pd.read_parquet(path)
     assert list(df.columns) == ALL_COLUMNS
     assert_valid(df)

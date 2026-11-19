@@ -23,7 +23,7 @@ Design rules, in priority order:
     leak it into everyone's features.
 
 Usage:
-    python -m src.f1.build_features
+    python -m src.build_features
 """
 
 from __future__ import annotations

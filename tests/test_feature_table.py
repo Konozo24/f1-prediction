@@ -3,9 +3,9 @@
 import pandas as pd
 import pytest
 
-from src.f1.config import (BANNED_COLUMNS, MAX_OBSERVED_GRID, PIT_LANE_GRID,
+from src.config import (BANNED_COLUMNS, MAX_OBSERVED_GRID, PIT_LANE_GRID,
                            PROCESSED, YEAR_MAX, YEAR_MIN)
-from src.f1.schema import ALL_COLUMNS, FEATURES, TARGET, assert_valid
+from src.schema import ALL_COLUMNS, FEATURES, TARGET, assert_valid
 
 PATH = PROCESSED / "features.parquet"
 
@@ -13,7 +13,7 @@ PATH = PROCESSED / "features.parquet"
 @pytest.fixture(scope="module")
 def df():
     if not PATH.exists():
-        pytest.skip("run: python -m src.f1.build_features")
+        pytest.skip("run: python -m src.build_features")
     return pd.read_parquet(PATH)
 
 
@@ -84,7 +84,7 @@ def test_rolling_form_is_nan_only_for_drivers_with_no_lookback(df):
 
 def test_lookback_seasons_are_not_in_the_table(df):
     """2012-13 fill the windows, then must be dropped - never predicted."""
-    from src.f1.config import YEAR_MIN
+    from src.config import YEAR_MIN
     assert df.year.min() == YEAR_MIN
 
 
