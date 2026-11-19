@@ -1,10 +1,28 @@
 .venv/
 __pycache__/
 *.pyc
-data/raw/*
-!data/raw/DOWNLOADED_AT.txt
-!data/raw/VERIFY.txt
-data/processed/*
-!data/processed/.gitkeep
-.ipynb_checkpoints/
 .pytest_cache/
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------
+# Data IS committed, deliberately.
+#
+# The usual "never commit data" rule exists because data churns: git stores a
+# full snapshot of every version, so a file that changes weekly balloons the
+# repo. Ours is frozen by team ground rule and will never change, so there is
+# exactly one version of it forever. The rule does not apply.
+#
+# Committing it is what actually enforces "one frozen dataset, nobody
+# re-downloads mid-project". The upstream Kaggle dataset is refreshed after
+# every Grand Prix, so a teammate who downloads next week gets DIFFERENT data
+# and incomparable results. Pinning it in git makes that impossible.
+#
+# 29 MB total, largest file 24 MB (lap_times.csv). GitHub warns at 50 MB and
+# blocks at 100 MB per file, so we are well inside limits.
+# ---------------------------------------------------------------------------
+
+# features.csv is a derived convenience copy for opening in Excel. It must
+# never be the source of truth - CSV loses dtypes (int8 -> int64) and cannot
+# distinguish NaN from an empty string, which would silently break the
+# missing-data experiment.
+data/processed/features.csv
