@@ -1,0 +1,12 @@
+# Keep the frozen dataset byte-identical across machines.
+#
+# Git normalises line endings by default (LF in the repo, CRLF on Windows
+# checkout). For a dataset that exists specifically so every member works on
+# IDENTICAL bytes, that conversion defeats the purpose: a teammate on macOS or
+# Linux would check out different bytes than Ming committed, and any checksum
+# we quote in the report would not reproduce.
+#
+# -text disables all conversion: what was committed is what is checked out.
+data/raw/*.csv        -text
+data/raw/*.txt        -text
+data/processed/*.parquet binary
