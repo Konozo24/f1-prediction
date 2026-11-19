@@ -116,6 +116,22 @@ N_PIT_LANE_EXPECTED = 79
 FINISHED_PATTERN = r"^(Finished|\+\d+ Lap)"
 
 # --------------------------------------------------------------------------
+# Outlier thresholds - verified against the raw data
+# --------------------------------------------------------------------------
+# pit_stops.milliseconds has a median of 25.1s but a 99th percentile of 1523s
+# and a max of 3069s (51 minutes). Those are cars parked during a red flag, not
+# pit stops. 830 stops exceed 60s. Taking a MEAN over them made
+# constructor_avg_pitstop_time range 21-1089s, with 38% of rows above twice the
+# median. We drop stops over this threshold and aggregate with a MEDIAN.
+MAX_PIT_STOP_SECONDS = 60
+
+# Lap-time standard deviation is meant to measure a driver's consistency, but
+# safety-car laps, in/out laps and red flags inflate it enormously (median 11s,
+# 95th percentile 104s). We keep only laps within this multiple of the driver's
+# own median lap for that race, which removes the non-racing laps.
+GREEN_LAP_MULTIPLE = 1.5
+
+# --------------------------------------------------------------------------
 # Leakage control
 # --------------------------------------------------------------------------
 # Recorded during or after the race. These may NEVER appear in X.

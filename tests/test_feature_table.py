@@ -63,12 +63,42 @@ def test_no_feature_too_correlated_with_target(df):
     assert c.max() < 0.95, c.sort_values(ascending=False).head()
 
 
-def test_first_race_of_a_career_has_no_history(df):
-    """shift(1) must leave the first appearance empty, not filled."""
+def test_first_race_in_scope_has_no_rolling_form(df):
+    """shift(1) must leave the first scoped appearance empty, not filled."""
     first = df.sort_values(["year", "round"]).groupby("driverId").head(1)
     assert first.driver_avg_finish_3.isna().all()
-    assert (first.driver_career_races == 0).all()
-    assert (first.driver_prior_wins == 0).all()
+
+
+def test_career_totals_come_from_full_history_not_the_window(df):
+    """Regression: these were counted inside 2014+ only.
+
+    That made Hamilton - 128 starts and 22 wins before our data begins - look
+    identical to an actual rookie at the 2014 opener.
+    """
+    ham = df[df.driverId == 1].sort_values(["year", "round"]).iloc[0]
+    assert ham.driver_career_races > 100, "pre-2014 starts must be counted"
+    assert ham.driver_prior_wins > 20, "pre-2014 wins must be counted"
+
+
+def test_true_debutants_still_start_at_zero(df):
+    """A driver whose first ever race is inside the window must have 0."""
+    first = df.sort_values(["year", "round"]).groupby("driverId").head(1)
+    debutants = first[first.driver_career_races == 0]
+    assert len(debutants) > 0, "some drivers must debut inside 2014-2025"
+    assert (debutants.driver_prior_wins == 0).all()
+
+
+def test_pit_stop_times_are_physically_plausible(df):
+    """Regression: red-flag stops (up to 3069s) were being averaged in."""
+    s = df.constructor_avg_pitstop_time.dropna()
+    assert s.max() < 60, f"max {s.max():.1f}s is not a pit stop"
+    assert 15 < s.median() < 40, s.median()
+
+
+def test_laptime_consistency_excludes_non_racing_laps(df):
+    """Regression: safety-car and in/out laps inflated std to 285s."""
+    s = df.driver_laptime_consistency.dropna()
+    assert s.max() < 60, f"max {s.max():.1f}s std suggests safety-car laps"
 
 
 def test_splits_are_chronological(df):

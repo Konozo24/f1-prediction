@@ -33,6 +33,8 @@ import pandas as pd
 
 from .config import (
     FINISHED_PATTERN,
+    GREEN_LAP_MULTIPLE,
+    MAX_PIT_STOP_SECONDS,
     NA_VALUES,
     FOLD_SENTINEL,
     PODIUM_CUTOFF,
@@ -127,8 +129,9 @@ def add_driver_form(df: pd.DataFrame, drivers: pd.DataFrame) -> pd.DataFrame:
 
     df["driver_points_last_5"] = past_roll_sum(df, "driverId", "gp_points", 5)
     df["driver_dnf_rate_10"] = past_mean(df, "driverId", "dnf", 10)
-    df["driver_career_races"] = past_count(df, "driverId")
-    df["driver_prior_wins"] = past_cumsum(df, "driverId", "win")
+    # career_races and prior_wins are merged in from full history - see
+    # build_career_history(). Counting them inside the 2014+ window would make
+    # Hamilton (128 starts, 22 wins before 2014) identical to a true rookie.
 
     dob = drivers[["driverId", "dob"]].copy()
     dob["dob"] = pd.to_datetime(dob["dob"], errors="coerce")
@@ -137,6 +140,27 @@ def add_driver_form(df: pd.DataFrame, drivers: pd.DataFrame) -> pd.DataFrame:
         (pd.to_datetime(df["date"], errors="coerce") - df["dob"]).dt.days / 365.25
     )
     return df.drop(columns="dob")
+
+
+def build_career_history(d: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Career starts and wins from the FULL 1950+ history, not the 2014+ window.
+
+    Counting these inside the scoped window makes every pre-2014 driver look
+    like a debutant at the 2014 opener: Hamilton had 128 starts and 22 wins
+    before our data begins, but a scoped cumcount gives him 0 - identical to an
+    actual rookie. All of it is pre-race information, so using the full history
+    is legitimate.
+    """
+    hist = (
+        d["results"][["raceId", "driverId", "positionOrder"]]
+        .merge(d["races"][["raceId", "year", "round"]], on="raceId", how="inner")
+        .sort_values(["year", "round"])
+        .reset_index(drop=True)
+    )
+    hist["_win"] = (hist["positionOrder"] == 1).astype("int8")
+    hist["driver_career_races"] = past_count(hist, "driverId")
+    hist["driver_prior_wins"] = past_cumsum(hist, "driverId", "_win")
+    return hist[["raceId", "driverId", "driver_career_races", "driver_prior_wins"]]
 
 
 def add_team_form(df: pd.DataFrame) -> pd.DataFrame:
@@ -218,10 +242,17 @@ def add_lap_and_pit(df: pd.DataFrame, lap_times: pd.DataFrame,
                     pit_stops: pd.DataFrame) -> pd.DataFrame:
     """Per-race lap/pit summaries, then rolled over PREVIOUS races only."""
     # --- per race-driver pace summary
+    # Drop non-racing laps before measuring consistency. Safety-car laps, in/out
+    # laps and red-flag laps inflate the standard deviation enormously - raw, it
+    # ran to 285s against a median of 11s.
+    lt_raw = lap_times.dropna(subset=["milliseconds"]).copy()
+    own_median = lt_raw.groupby(["raceId", "driverId"])["milliseconds"].transform("median")
+    green = lt_raw[lt_raw["milliseconds"] <= GREEN_LAP_MULTIPLE * own_median]
+
     lt = (
-        lap_times.groupby(["raceId", "driverId"], as_index=False)
-                 .agg(_median_ms=("milliseconds", "median"),
-                      _std_ms=("milliseconds", "std"))
+        green.groupby(["raceId", "driverId"], as_index=False)
+             .agg(_median_ms=("milliseconds", "median"),
+                  _std_ms=("milliseconds", "std"))
     )
     lt["_laptime_rank"] = lt.groupby("raceId")["_median_ms"].rank(method="min")
     # seconds, so the feature is readable in SHAP plots
@@ -244,15 +275,20 @@ def add_lap_and_pit(df: pd.DataFrame, lap_times: pd.DataFrame,
     df["driver_avg_positions_gained_lap1"] = past_mean(df, "driverId", "_gained_lap1", 5)
 
     # --- pit stops, at constructor-race level
+    # 830 raw "stops" exceed 60s, up to 3069s - cars parked during a red flag,
+    # not pit stops. Drop them, then aggregate with a median rather than a mean.
+    ps_clean = pit_stops[
+        pit_stops["milliseconds"] <= MAX_PIT_STOP_SECONDS * 1000
+    ]
     ps = (
-        pit_stops.groupby(["raceId", "driverId"], as_index=False)
-                 .agg(_pit_ms=("milliseconds", "mean"))
+        ps_clean.groupby(["raceId", "driverId"], as_index=False)
+                .agg(_pit_ms=("milliseconds", "median"))
     )
     tmp = df[["raceId", "driverId", "constructorId", "year", "round"]].merge(
         ps, on=["raceId", "driverId"], how="left")
     cr = (
         tmp.groupby(["raceId", "year", "round", "constructorId"], as_index=False)
-           .agg(_pit=("_pit_ms", "mean"))
+           .agg(_pit=("_pit_ms", "median"))
            .sort_values(["year", "round"])
            .reset_index(drop=True)
     )
@@ -305,6 +341,7 @@ def main() -> None:
 
     df = add_starting_position(df)
     df = add_driver_form(df, d["drivers"])
+    df = df.merge(build_career_history(d), on=["raceId", "driverId"], how="left")
     df = add_team_form(df)
     df = add_circuit(df)
     df = add_season_context(df)
