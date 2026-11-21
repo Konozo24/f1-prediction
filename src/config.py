@@ -89,8 +89,7 @@ FOLD_SENTINEL = -1
 def fold_of(year: int) -> int:
     """Index of the walk-forward fold that validates on this season.
 
-    Returns FOLD_SENTINEL if no fold validates on it. Single source of truth so
-    the real table and the stub cannot disagree.
+    Returns FOLD_SENTINEL if no fold validates on it.
     """
     for i, (_, validate_on) in enumerate(FOLDS):
         if year == validate_on:

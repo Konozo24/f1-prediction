@@ -71,17 +71,24 @@ Already run — results below under *Verified dataset facts*, full output in
 
 ```
 src/
-  config.py      every shared decision: paths, splits, folds, banned columns
-  schema.py      the frozen 30-feature contract  <- M2/M3/M4 import this
-  features.py    past_mean / past_sum / recode_grid  <- leakage discipline
-  verify.py      step 1: prove the data supports the plan
-  stub.py        synthetic table so M2-M4 can start before the real one lands
+  config.py          every shared decision: paths, splits, folds, banned columns
+  schema.py          the frozen 30-feature contract  <- M2/M3/M4 import this
+  features.py        past_mean / past_sum / recode_grid  <- leakage discipline
+  verify.py          step 1: prove the data supports the plan
+  build_features.py  step 2: build the real feature table
+  evaluate.py         metrics, walk-forward fold runner, race-level top-3 hit rate
+  models/
+    knn.py            M1's own family: base -> subspace bagging -> NCA metric
 tests/
-  test_leakage.py   shift(1), grid encoding, split ordering
-  test_schema.py    the 30-feature contract
-data/raw/           gitignored, frozen after download
-data/processed/      features.parquet (the artifact M2-M4 depend on)
-                     features_stub.parquet (plumbing only, no conclusions)
+  test_leakage.py       shift(1), grid encoding, split ordering
+  test_schema.py        the 30-feature contract
+  test_feature_table.py invariants on the REAL built table
+data/raw/            committed and frozen, see "Get the data"
+data/processed/
+  features.parquet   the artifact M2-M4 depend on
+  m1_rungs.csv              M1's three-rung results
+  m1_dimensionality_curve.csv   PR-AUC vs feature count, M1's headline figure
+  oof_m1_knn.parquet        out-of-fold predictions, for M4's stacking
 ```
 
 ## The three rules that matter
@@ -129,7 +136,14 @@ Two data quirks confirmed and handled:
 - [x] `config.py` — splits, folds, banned columns, DNF rule, grid constants
 - [x] `features.py` — `past_mean`, `past_sum`, `recode_grid`, `drop_races_missing_grid`
 - [x] `schema.py` — frozen 30-feature contract
-- [x] `stub.py` — day-3 hand-off table for M2/M3/M4
-- [x] Dataset downloaded and frozen
-- [x] **Step 1: `verify.py` run, 35 tests passing**
-- [ ] Step 2: spine + target + the 30 features → `features.parquet`
+- [x] Dataset downloaded, frozen, and committed (raw CSVs are in the repo)
+- [x] **Step 1: `verify.py` run** — real row/podium counts above, in `VERIFY.txt`
+- [x] **Step 2: `build_features.py` run** — `features.parquet` is live, 5,085 x 39
+- [x] Repo pushed to GitHub; M2/M3/M4 unblocked
+- [x] M1's own family: 3 rungs scored, dimensionality curve run, OOF predictions written
+- [ ] Optuna tuning on `k` / `p` / `max_features`
+- [ ] Threshold tuning + calibration (Platt, since kNN has no `class_weight`)
+- [ ] SHAP / permutation importance, error analysis
+- [ ] Streamlit page, report section
+
+51 tests passing.

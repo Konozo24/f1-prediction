@@ -1,12 +1,9 @@
 """Schema contract tests. M2/M3/M4 depend on these column names not moving."""
 
-import pandas as pd
 import pytest
 
-from src.config import BANNED_COLUMNS, PROCESSED
-from src.schema import (ALL_COLUMNS, FEATURE_GROUPS, FEATURES, ID_COLUMNS,
-                           TARGET, assert_valid)
-from src.stub import make_stub
+from src.config import BANNED_COLUMNS
+from src.schema import FEATURE_GROUPS, FEATURES, ID_COLUMNS, assert_valid
 
 
 def test_exactly_thirty_features():
@@ -37,49 +34,18 @@ def test_ids_are_not_features():
     assert not (set(ID_COLUMNS) & set(FEATURES))
 
 
-def test_stub_honours_the_contract():
-    assert_valid(make_stub())
-
-
-def test_stub_has_realistic_class_balance():
-    df = make_stub()
-    assert 0.13 < df[TARGET].mean() < 0.17, "podium rate should be ~15%"
-
-
-def test_stub_has_exactly_three_podiums_per_race():
-    df = make_stub()
-    assert (df.groupby("raceId")[TARGET].sum() == 3).all()
-
-
-def test_stub_splits_are_chronological():
-    df = make_stub()
-    yr = df.groupby("split")["year"].agg(["min", "max"])
-    assert yr.loc["train", "max"] < yr.loc["validation", "min"]
-    assert yr.loc["validation", "max"] < yr.loc["test", "min"]
-
-
-def test_stub_folds_only_inside_train():
-    df = make_stub()
-    assert (df[df.fold >= 0]["split"] == "train").all()
-
-
 def test_assert_valid_rejects_a_missing_column():
-    bad = make_stub().drop(columns=["grid"])
+    import pandas as pd
+    from src.schema import ALL_COLUMNS
+    bad = pd.DataFrame({c: [0] for c in ALL_COLUMNS if c != "grid"})
     with pytest.raises(ValueError, match="missing columns"):
         assert_valid(bad)
 
 
 def test_assert_valid_rejects_a_banned_column():
-    bad = make_stub()
+    import pandas as pd
+    from src.schema import ALL_COLUMNS
+    bad = pd.DataFrame({c: [0] for c in ALL_COLUMNS})
     bad["positionOrder"] = 1
     with pytest.raises(ValueError, match="banned columns"):
         assert_valid(bad)
-
-
-def test_stub_parquet_roundtrips():
-    path = PROCESSED / "features_stub.parquet"
-    if not path.exists():
-        pytest.skip("run: python -m src.stub")
-    df = pd.read_parquet(path)
-    assert list(df.columns) == ALL_COLUMNS
-    assert_valid(df)
