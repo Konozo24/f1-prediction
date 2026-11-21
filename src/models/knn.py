@@ -46,6 +46,15 @@ from ..config import PROCESSED
 from ..evaluate import summarise, walk_forward
 from ..schema import FEATURES, TARGET
 
+# Default hyperparameters below are Optuna-tuned (30 trials per rung, scored
+# on the walk-forward folds only - see tune_knn.py). Overturned one assumption
+# we stated in advance: rung 2 picked p=2 (Euclidean), not p=1 (Manhattan).
+# Manhattan still wins for rung 1 and inside rung 3's learned-metric space, so
+# the Aggarwal et al. reasoning holds there; it does not transfer automatically
+# to an ensemble of kNNs, where Euclidean plus heavy feature subsampling
+# (max_features=0.78) apparently works better. Report this as a finding, not
+# a contradiction to hide - predicting a mechanism and then showing exactly
+# where it does and does not hold is stronger than predicting it everywhere.
 K = 25
 SEED = 0
 
@@ -61,7 +70,7 @@ def _pre() -> list:
             ("scale", StandardScaler())]
 
 
-def rung1_base(k: int = K, p: int = 1) -> Pipeline:
+def rung1_base(k: int = 84, p: int = 1) -> Pipeline:
     m = Pipeline(_pre() + [
         ("knn", KNeighborsClassifier(n_neighbors=k, weights="distance",
                                      p=p, algorithm="brute")),
@@ -70,12 +79,12 @@ def rung1_base(k: int = K, p: int = 1) -> Pipeline:
     return m
 
 
-def rung2_subspace(k: int = K, n_estimators: int = 50,
-                   max_features: float = 0.4) -> Pipeline:
+def rung2_subspace(k: int = 26, n_estimators: int = 30,
+                   max_features: float = 0.775, p: int = 2) -> Pipeline:
     m = Pipeline(_pre() + [
         ("bag", BaggingClassifier(
             estimator=KNeighborsClassifier(n_neighbors=k, weights="distance",
-                                           p=1, algorithm="brute"),
+                                           p=p, algorithm="brute"),
             n_estimators=n_estimators,
             max_features=max_features,      # <- the point: fewer dimensions each
             bootstrap_features=False,
@@ -85,7 +94,7 @@ def rung2_subspace(k: int = K, n_estimators: int = 50,
     return m
 
 
-def rung3_nca(k: int = K, n_components: int = 8) -> Pipeline:
+def rung3_nca(k: int = 32, n_components: int = 9) -> Pipeline:
     m = Pipeline(_pre() + [
         ("nca", NeighborhoodComponentsAnalysis(n_components=n_components,
                                                random_state=SEED, max_iter=120)),

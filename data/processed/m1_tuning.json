@@ -1,0 +1,28 @@
+{
+  "rung1_base": {
+    "best_pr_auc": 0.6982128339301122,
+    "best_params": {
+      "n_neighbors": 84,
+      "p": 1
+    },
+    "n_trials": 30
+  },
+  "rung2_subspace": {
+    "best_pr_auc": 0.7127070123482827,
+    "best_params": {
+      "n_neighbors": 26,
+      "p": 2,
+      "n_estimators": 30,
+      "max_features": 0.7750159824250632
+    },
+    "n_trials": 30
+  },
+  "rung3_nca": {
+    "best_pr_auc": 0.7301971745495631,
+    "best_params": {
+      "n_neighbors": 32,
+      "n_components": 9
+    },
+    "n_trials": 30
+  }
+}
