@@ -26,3 +26,4 @@ __pycache__/
 # distinguish NaN from an empty string, which would silently break the
 # missing-data experiment.
 data/processed/features.csv
+data/processed/m1_*.csv
